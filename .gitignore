@@ -1,0 +1,19 @@
+# Python environment folders
+venv/
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Output folders
+output/
+
+.env
+
+service.json
