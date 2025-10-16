@@ -55,25 +55,52 @@ st.title("🤖 JIRA AI Test Case Generator")
 st.markdown(
     """
     ### 📋 Instructions
-    - Select Jira user stories from the list below.
-    - Use sidebar options to customize test case generation.
-    - Click **Generate Test Cases** to begin.
-    - Results will appear below with download options.
+    1. Select your JIRA project below.
+    2. Choose one or more user stories from that project.
+    3. Customize generation options in the sidebar.
+    4. Click **Generate Test Cases** to create AI-powered test cases.
     """
 )
 
-# --- Jira Connection ---
+# --- JIRA Connection ---
 try:
     jira = JIRA(server=JIRA_SERVER, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
-    issues = jira.search_issues(
-        f'project={PROJECT_KEY} AND issuetype=Story AND status="To Do"',
-        maxResults=50
-    )
+    all_projects = jira.projects()
+    project_keys = [p.key for p in all_projects]
 except Exception as e:
     st.error(f"⚠️ Jira connection failed: {e}")
     st.stop()
 
-story_options = [f"{issue.key}: {issue.fields.summary}" for issue in issues]
+# --- Project Selection ---
+st.subheader("📁 Select JIRA Project")
+selected_project = st.selectbox(
+    "Choose a project to view its user stories:",
+    options=project_keys,
+    index=project_keys.index(PROJECT_KEY) if PROJECT_KEY in project_keys else 0
+)
+
+@st.cache_data(show_spinner=False)
+def fetch_stories(_jira_client, project_key):
+    """Fetch up to 50 latest user stories from a JIRA project."""
+    return _jira_client.search_issues(
+        f'project={project_key} AND issuetype=Story ORDER BY created DESC',
+        maxResults=50
+    )
+
+
+# --- Load Stories ---
+issues = []
+if selected_project:
+    try:
+        issues = fetch_stories(jira, selected_project)
+        if not issues:
+            st.warning(f"No user stories found in project **{selected_project}**.")
+        else:
+            st.success(f"✅ Loaded {len(issues)} stories from **{selected_project}**.")
+    except Exception as e:
+        st.error(f"⚠️ Failed to load stories for {selected_project}: {e}")
+
+story_options = [f"{issue.key}: {issue.fields.summary}" for issue in issues] if issues else []
 
 # --- Sidebar Options ---
 st.sidebar.header("⚙️ Test Case Generation Settings")
